@@ -1,10 +1,10 @@
+from struct import pack, unpack
+from os import urandom
+from progress.bar import Bar
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256, SHA512
 from pbkdf2 import PBKDF2
-import struct
-import os
-from sys import exit
-from progress.bar import Bar
+
 
 # delimiter
 SALT_MARKER = b'$]*'
@@ -46,17 +46,17 @@ def encrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
     print("Block size: %i" % bs)
 
     # create header data consisting of kdf_iterations
-    header = salt_marker + struct.pack('>H', kdf_iterations) + salt_marker
+    header = salt_marker + pack('>H', kdf_iterations) + salt_marker
 
     # generate (pseudo) random salt
-    salt = os.urandom(bs - len(header))
+    salt = urandom(bs - len(header))
 
     # use password key based derivation algorithm to generate hash based on pass + salt
     kdf = PBKDF2(password, salt, min(kdf_iterations, 65535), hashmod)
     key = kdf.read(key_size)
 
     # generate (pseudo) random IV
-    iv = os.urandom(bs)
+    iv = urandom(bs)
 
     # create cipher object
     cipher = AES.new(key, AES.MODE_CBC, iv)
@@ -75,18 +75,22 @@ def encrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
 
     encryptbar = Bar('Encrypting', max=(filesize(infile) / (1024 * bs)) + 1)
 
+    pads = False
     # read file by 1024 * AES.block_size
     for chunk in iter(lambda: infile.read(1024 * bs), b''):
-        # is this last chunk || is chunk less than 1024*bs ? write pads
+        # is this last chunk || is chunk less than 1024*bs
         if len(chunk) == 0 or len(chunk) % bs != 0:
             padding_length = (bs - len(chunk) % bs) or bs
             chunk += (padding_length * chr(padding_length)).encode()
+            pads = True
 
         # write encrypted chunks in file
         outfile.write(cipher.encrypt(chunk))
         encryptbar.next()
-
+    if not pads:
+            outfile.write(cipher.encrypt((bs * chr(bs)).encode()))
     encryptbar.finish()
+
     return None
 
 
@@ -123,7 +127,7 @@ def decrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
 
     # extract salt, extract iterations number
     if salt[:mlen] == salt_marker and salt[mlen + 2:hlen] == salt_marker:
-        kdf_iterations = struct.unpack('>H', salt[mlen:mlen + 2])[0]
+        kdf_iterations = unpack('>H', salt[mlen:mlen + 2])[0]
         salt = salt[hlen:]
     else:
         kdf_iterations = ITERATIONS
@@ -155,6 +159,9 @@ def decrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
 
     # todo: implement progress bar
     # for chunk in iter(lambda: infile.read(1024 * bs), b''):
+    # next_chunk = cipher.decrypt(chunk)
+    #
+    #
 
     while not finished:
         # variable manipulation + decryption
@@ -162,18 +169,21 @@ def decrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
 
         # we have no more data to decrypt (cipher.decrypt returned None)
         if not next_chunk:
+            print(len(chunk))
             # get length of padding
             try:
                 padlen = chunk[-1]
             except IndexError:
                 break
-
+            print(chunk[-1])
             # check if pad
             if isinstance(padlen, str):
                 padlen = ord(padlen)
                 padding = padlen * chr(padlen)
             else:
                 padding = (padlen * chr(chunk[-1])).encode()
+
+            print(padding)
 
             if padlen < 1 or padlen > bs:
                 raise ValueError("Bad decrypt pad (%d)" % padlen)
@@ -184,11 +194,12 @@ def decrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
 
             chunk = chunk[:-padlen]
             finished = True
+
         filehash.update(chunk)
         outfile.write(chunk)
 
     if filehash.digest() == decryptedfilehash:
-        print('Integrity check: OK')
+        print("Integrity check: OK")
     else:
         print("Integrity check: FAIL")
 
