@@ -1,6 +1,5 @@
 from kyslikcrypter.encryptor.encryptor import encrypt, decrypt
 import argparse
-import os
 import sys
 import timeit
 

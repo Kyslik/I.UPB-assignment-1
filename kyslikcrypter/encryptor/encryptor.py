@@ -81,7 +81,6 @@ def encrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
         if len(chunk) == 0 or len(chunk) % bs != 0:
             padding_length = (bs - len(chunk) % bs) or bs
             chunk += (padding_length * chr(padding_length)).encode()
-            # finished = True
 
         # write encrypted chunks in file
         outfile.write(cipher.encrypt(chunk))
