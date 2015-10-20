@@ -5,7 +5,6 @@ from Crypto.Cipher import AES
 from Crypto.Hash import SHA256, SHA512
 from pbkdf2 import PBKDF2
 
-
 # delimiter
 SALT_MARKER = b'$]*'
 
@@ -73,7 +72,7 @@ def encrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
     # write iv 16b
     outfile.write(iv)
 
-    encryptbar = Bar('Encrypting', max=(filesize(infile) / (1024 * bs)) + 1)
+    encryptbar = Bar('Encrypting', max=ceil(filesize(infile) / (1024 * bs)))
 
     pads = False
     # read file by 1024 * AES.block_size
@@ -87,8 +86,10 @@ def encrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
         # write encrypted chunks in file
         outfile.write(cipher.encrypt(chunk))
         encryptbar.next()
+
     if not pads:
             outfile.write(cipher.encrypt((bs * chr(bs)).encode()))
+
     encryptbar.finish()
 
     return None
@@ -152,51 +153,18 @@ def decrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
     # create SHA512 object so when we iterate chunk by chunk we update hash
     filehash = SHA512.new()
 
-    # set first chunk to be null
-    next_chunk = b''
+    encryptbar = Bar('Encrypting', max=ceil((filesize(infile) - 96) / (1024 * bs)))
 
-    finished = False
 
     # todo: implement progress bar
-    # for chunk in iter(lambda: infile.read(1024 * bs), b''):
-    # next_chunk = cipher.decrypt(chunk)
-    #
-    #
-
-    while not finished:
-        # variable manipulation + decryption
-        chunk, next_chunk = next_chunk, cipher.decrypt(infile.read(1024 * bs))
-
-        # we have no more data to decrypt (cipher.decrypt returned None)
-        if not next_chunk:
-            print(len(chunk))
-            # get length of padding
-            try:
-                padlen = chunk[-1]
-            except IndexError:
-                break
-            print(chunk[-1])
-            # check if pad
-            if isinstance(padlen, str):
-                padlen = ord(padlen)
-                padding = padlen * chr(padlen)
-            else:
-                padding = (padlen * chr(chunk[-1])).encode()
-
-            print(padding)
-
-            if padlen < 1 or padlen > bs:
-                raise ValueError("Bad decrypt pad (%d)" % padlen)
-
-            # all the pad-bytes must be the same
-            if chunk[-padlen:] != padding:
-                raise ValueError("Bad decrypt")
-
-            chunk = chunk[:-padlen]
-            finished = True
-
-        filehash.update(chunk)
-        outfile.write(chunk)
+    for chunk in iter(lambda: infile.read(1024 * bs), b''):
+        curr_chunk = cipher.decrypt(chunk)
+        if len(curr_chunk) < 1024 * bs:
+            curr_chunk = unpad(bs, curr_chunk)
+        filehash.update(curr_chunk)
+        outfile.write(curr_chunk)
+        encryptbar.next()
+    encryptbar.finish()
 
     if filehash.digest() == decryptedfilehash:
         print("Integrity check: OK")
@@ -204,6 +172,26 @@ def decrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
         print("Integrity check: FAIL")
 
     return None
+
+
+def unpad(bs, chunk):
+    padlen = chunk[-1]
+
+    if isinstance(padlen, str):
+        padlen = ord(padlen)
+        padding = padlen * chr(padlen)
+    else:
+        padding = (padlen * chr(chunk[-1])).encode()
+
+    if padlen < 1 or padlen > bs:
+        return chunk
+        raise ValueError("Bad decrypt pad (%d)" % padlen)
+
+    # all the pad-bytes must be the same
+    if chunk[-padlen:] != padding:
+        raise ValueError("Bad decrypt")
+    chunk = chunk[:-padlen]
+    return chunk
 
 
 def hashfile(file, blocksize=2 ** 13):
@@ -238,3 +226,14 @@ def filesize(file):
     length = file.tell()  # The current position is the length
     file.seek(pos)  # Return to the saved position
     return length
+
+
+def ceil(n):
+    res = int(n)
+    return res if res == n or n < 0 else res+1
+
+
+def floor(n):
+    res = int(n)
+    return res if res == n or n >= 0 else res-1
+1048576
