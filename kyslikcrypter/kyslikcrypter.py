@@ -1,5 +1,4 @@
 import argparse
-import psutil
 from sys import argv, exit, stdout
 from timeit import default_timer
 from kyslikcrypter.encryptor.encryptor import encrypt, decrypt
@@ -9,8 +8,7 @@ from os import urandom
 from Crypto.Hash import SHA256
 
 
-
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 
 
 def main(args=None):
@@ -22,10 +20,8 @@ def main(args=None):
                     help="decrypt input file")
     ap.add_argument("-f", "--force", action="store_true",
                     help="overwrite output file if it exists")
-    ap.add_argument("-ch", "--check-sum", action="store_true",
-                    help="display file checksum(s) (SHA512)")
-    ap.add_argument("-pb", "--progress-bar", action="store_true",
-                    help="display progress bar")
+    ap.add_argument("-pb", "--progress-bar", action="store_false",
+                    help="do not display progress bar")
     ap.add_argument("-gp", "--generate-pass", metavar="PASS LENGTH", const=8, default=None, type=int, action="store",
                     nargs="?",
                     help="generates and displays pass phrase used to encrypt file")
@@ -34,6 +30,8 @@ def main(args=None):
 
     # parse arguments
     args = ap.parse_args(args if args is not None else argv[1:])
+
+    encryptor_args = {"quiet": args.quiet, "progress_bar": args.progress_bar}
 
     checkfiles(args)
 
@@ -46,9 +44,9 @@ def main(args=None):
         if args.decrypt:
             passwd = getpass("Enter decryption password: ")
             timestartdecrypt = default_timer()
-            decrypt(infile, outfile, passwd)
+            decrypt(infile, outfile, passwd, encryptor_args)
             timeenddecrypt = default_timer()
-            print("Decrypt time:  %.3f seconds." % (timeenddecrypt - timestartdecrypt))
+            print("Decrypt time:  %.3f seconds." % (timeenddecrypt - timestartdecrypt)) if not args.quiet else None
         else:
             if gen_pass is None:
                 try:
@@ -64,13 +62,10 @@ def main(args=None):
                 passwd = gen_pass
 
             timestartencrypt = default_timer()
-            encrypt(infile, outfile, passwd)
+            encrypt(infile, outfile, passwd, encryptor_args)
             timeendencrypt = default_timer()
-            print("Encrypt time:  %.3f seconds." % (timeendencrypt - timestartencrypt))
+            print("Encrypt time:  %.3f seconds." % (timeendencrypt - timestartencrypt)) if not args.quiet else None
 
-    process = psutil.Process()
-
-    print("RAM usage: {0} MB".format(process.memory_info()[0] / float(2 ** 20)))
     return 0
 
 
@@ -107,7 +102,7 @@ def generatepass(args):
 
 
 def query_yes_no(question, default="yes"):
-    """Ask a yes/no question via raw_input() and return their answer.
+    """Ask a yes/no question via input() and return their answer.
 
     "question" is a string that is presented to the user.
     "default" is the presumed answer if the user just hits <Enter>.

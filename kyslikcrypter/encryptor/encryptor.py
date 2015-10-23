@@ -14,7 +14,7 @@ ITERATIONS = 1000
 __all__ = ('encrypt', 'decrypt')
 
 
-def encrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
+def encrypt(infile, outfile, password, args={}, key_size=32, salt_marker=SALT_MARKER,
             kdf_iterations=ITERATIONS, hashmod=SHA256):
     """
     Encrypt infile and write it to outfile using password to generate key.
@@ -41,8 +41,6 @@ def encrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
         raise ValueError('kdf_iterations must be <= 65535.')
 
     bs = AES.block_size
-
-    print("Block size: %i" % bs)
 
     # create header data consisting of kdf_iterations
     header = salt_marker + pack('>H', kdf_iterations) + salt_marker
@@ -72,7 +70,8 @@ def encrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
     # write iv 16b
     outfile.write(iv)
 
-    encryptbar = Bar('Encrypting', max=ceil(filesize(infile) / (1024 * bs)))
+    if not args["quiet"] or not args["progress_bar"]:
+        encryptbar = Bar('Encrypting', max=ceil(filesize(infile) / (1024 * bs)))
 
     pads = False
     # read file by 1024 * AES.block_size
@@ -85,17 +84,17 @@ def encrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
 
         # write encrypted chunks in file
         outfile.write(cipher.encrypt(chunk))
-        encryptbar.next()
+        encryptbar.next() if 'encryptbar' in locals() else None
 
     if not pads:
             outfile.write(cipher.encrypt((bs * chr(bs)).encode()))
 
-    encryptbar.finish()
+    encryptbar.finish() if 'encryptbar' in locals() else None
 
     return None
 
 
-def decrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
+def decrypt(infile, outfile, password, args={}, key_size=32, salt_marker=SALT_MARKER,
             hashmod=SHA256):
     """
     Decrypt infile and write it to outfile using password to derive key.
@@ -153,23 +152,22 @@ def decrypt(infile, outfile, password, key_size=32, salt_marker=SALT_MARKER,
     # create SHA512 object so when we iterate chunk by chunk we update hash
     filehash = SHA512.new()
 
-    encryptbar = Bar('Encrypting', max=ceil((filesize(infile) - 96) / (1024 * bs)))
+    if not args["quiet"] or not args["progress_bar"]:
+        encryptbar = Bar('Encrypting', max=ceil((filesize(infile) - 96) / (1024 * bs)))
 
-
-    # todo: implement progress bar
     for chunk in iter(lambda: infile.read(1024 * bs), b''):
-        curr_chunk = cipher.decrypt(chunk)
+        try:
+            curr_chunk = cipher.decrypt(chunk)
+        except ValueError:
+            break # we break instead of showing error
         if len(curr_chunk) < 1024 * bs:
             curr_chunk = unpad(bs, curr_chunk)
         filehash.update(curr_chunk)
         outfile.write(curr_chunk)
-        encryptbar.next()
-    encryptbar.finish()
+        encryptbar.next() if 'encryptbar' in locals() else None
+    encryptbar.finish() if 'encryptbar' in locals() else None
 
-    if filehash.digest() == decryptedfilehash:
-        print("Integrity check: OK")
-    else:
-        print("Integrity check: FAIL")
+    print("Integrity check SHA512: {0}".format(("OK" if filehash.digest() == decryptedfilehash else "FAIL")))
 
     return None
 
@@ -185,11 +183,12 @@ def unpad(bs, chunk):
 
     if padlen < 1 or padlen > bs:
         return chunk
-        raise ValueError("Bad decrypt pad (%d)" % padlen)
+        # raise ValueError("Bad decrypt pad (%d)" % padlen)
 
     # all the pad-bytes must be the same
     if chunk[-padlen:] != padding:
-        raise ValueError("Bad decrypt")
+        return chunk
+        # raise ValueError("Bad decrypt")
     chunk = chunk[:-padlen]
     return chunk
 
@@ -208,7 +207,6 @@ def hashfile(file, blocksize=2 ** 13):
     hasher = SHA512.new()
 
     while len(buffer) > 0:
-        # print(len(buffer))
         hasher.update(buffer)
         buffer = file.read(blocksize)
     file.seek(pos)
@@ -236,4 +234,3 @@ def ceil(n):
 def floor(n):
     res = int(n)
     return res if res == n or n >= 0 else res-1
-1048576
