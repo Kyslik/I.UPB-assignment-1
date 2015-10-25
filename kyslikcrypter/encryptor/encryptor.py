@@ -11,6 +11,8 @@ SALT_MARKER = b'$]*'
 # iterations for PBKDF2
 ITERATIONS = 1000
 
+MULTIPLIER = 1024
+
 __all__ = ('encrypt', 'decrypt')
 
 
@@ -70,13 +72,13 @@ def encrypt(infile, outfile, password, args={}, key_size=32, salt_marker=SALT_MA
     # write iv 16b
     outfile.write(iv)
 
-    if not args["quiet"] or not args["progress_bar"]:
-        encryptbar = Bar('Encrypting', max=ceil(filesize(infile) / (1024 * bs)))
+    if not args["quiet"] and args["progress_bar"]:
+        encryptbar = Bar('Encrypting', max=ceil(filesize(infile) / (MULTIPLIER * bs)))
 
     pads = False
-    # read file by 1024 * AES.block_size
-    for chunk in iter(lambda: infile.read(1024 * bs), b''):
-        # is this last chunk || is chunk less than 1024*bs
+    # read file by MULTIPLIER * AES.block_size
+    for chunk in iter(lambda: infile.read(MULTIPLIER * bs), b''):
+        # is this last chunk || is chunk less than MULTIPLIER*bs
         if len(chunk) == 0 or len(chunk) % bs != 0:
             padding_length = (bs - len(chunk) % bs) or bs
             chunk += (padding_length * chr(padding_length)).encode()
@@ -152,15 +154,15 @@ def decrypt(infile, outfile, password, args={}, key_size=32, salt_marker=SALT_MA
     # create SHA512 object so when we iterate chunk by chunk we update hash
     filehash = SHA512.new()
 
-    if not args["quiet"] or not args["progress_bar"]:
-        encryptbar = Bar('Encrypting', max=ceil((filesize(infile) - 96) / (1024 * bs)))
+    if not args["quiet"] and args["progress_bar"]:
+        encryptbar = Bar('Encrypting', max=ceil((filesize(infile) - 96) / (MULTIPLIER * bs)))
 
-    for chunk in iter(lambda: infile.read(1024 * bs), b''):
+    for chunk in iter(lambda: infile.read(MULTIPLIER * bs), b''):
         try:
             curr_chunk = cipher.decrypt(chunk)
         except ValueError:
             break # we break instead of showing error
-        if len(curr_chunk) < 1024 * bs:
+        if len(curr_chunk) < MULTIPLIER * bs:
             curr_chunk = unpad(bs, curr_chunk)
         filehash.update(curr_chunk)
         outfile.write(curr_chunk)
