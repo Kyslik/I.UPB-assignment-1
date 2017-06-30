@@ -2,7 +2,7 @@
 
 Tool for encrypting and decrypting files using AES. 
 
-Requirements: Python3.5
+Requirements: Python, working crypto package (pycrypto, cryptography)
 
 ### Install
 
@@ -16,3 +16,4 @@ to test if program is installed correctly run
 ### Uninstall
 
 `$ pip uninstall kyslikcrypter`
+
