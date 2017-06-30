@@ -19,10 +19,6 @@ version = re.search(
 
 setup(
     name='kyslikcrypter',
-
-    # Versions should comply with PEP440.  For a discussion on single-sourcing
-    # the version across setup.py and the project code, see
-    # https://packaging.python.org/en/latest/single_source_version.html
     version=version,
 
     description='',
@@ -61,7 +57,7 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords='encrypt decrypt file AES',
+    keywords='encrypt and decrypt file AES',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().

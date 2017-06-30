@@ -1,12 +1,11 @@
 import argparse
 from sys import argv, exit, stdout
 from timeit import default_timer
-from kyslikcrypter.encrypter.encrypter import encrypt, decrypt
+from encrypter.encrypter import encrypt, decrypt
 from getpass import getpass, getuser
 from os.path import exists, splitext
 from os import urandom
 from Crypto.Hash import SHA256
-
 
 __version__ = "0.4.3"
 
@@ -70,7 +69,6 @@ def main(args=None):
 
 
 def checkfiles(args):
-
     # is outfile specified / if encrypting set name to infile.enc
     if not args.outfile:
         # decrypting option selected
