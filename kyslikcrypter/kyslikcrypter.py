@@ -1,7 +1,7 @@
 import argparse
 from sys import argv, exit, stdout
 from timeit import default_timer
-from kyslikcrypter.encryptor.encryptor import encrypt, decrypt
+from kyslikcrypter.encrypter.encrypter import encrypt, decrypt
 from getpass import getpass, getuser
 from os.path import exists, splitext
 from os import urandom
@@ -31,7 +31,7 @@ def main(args=None):
     # parse arguments
     args = ap.parse_args(args if args is not None else argv[1:])
 
-    encryptor_args = {"quiet": args.quiet, "progress_bar": args.progress_bar}
+    encrypter_args = {"quiet": args.quiet, "progress_bar": args.progress_bar}
 
     checkfiles(args)
 
@@ -44,7 +44,7 @@ def main(args=None):
         if args.decrypt:
             passwd = getpass("Enter decryption password: ")
             timestartdecrypt = default_timer()
-            decrypt(infile, outfile, passwd, encryptor_args)
+            decrypt(infile, outfile, passwd, encrypter_args)
             timeenddecrypt = default_timer()
             print("Decrypt time:  %.3f seconds." % (timeenddecrypt - timestartdecrypt)) if not args.quiet else None
         else:
@@ -62,7 +62,7 @@ def main(args=None):
                 passwd = gen_pass
 
             timestartencrypt = default_timer()
-            encrypt(infile, outfile, passwd, encryptor_args)
+            encrypt(infile, outfile, passwd, encrypter_args)
             timeendencrypt = default_timer()
             print("Encrypt time:  %.3f seconds." % (timeendencrypt - timestartencrypt)) if not args.quiet else None
 

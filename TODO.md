@@ -1,4 +1,4 @@
-###Zadanie 1: Implementácia aplikácie s využitím kryptografie
+### Zadanie 1: Implementácia aplikácie s využitím kryptografie
 1. Vytvorte aplikáciu, ktorá umožní používateľovi šifrovať a dešifrovať súbory (3b) pri zachovaní ich integrity (3b)
 2. Napíšte k aplikácii stručnú používateľskú dokumentáciu (3b):
    - ako sa aplikácia kompiluje/inštaluje
@@ -18,8 +18,9 @@
    - komentáre
    
 ---
-###Assignment 1: Create an application and implement cryptography aspects
-1. Create application that ecrypts and decrypts files (3 points), also provide data integrity (3 points)
+
+### Assignment 1: Create an application and implement cryptography aspects
+1. Create application that encrypts and decrypts files (3 points), also provide data integrity (3 points)
 2. Write documentation (3 points):
    - compile/install
    - usage
